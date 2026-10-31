@@ -1,27 +1,14 @@
-# AgroScan - Módulo de preprocesamiento de imágenes aéreas
+## Uso desde otra aplicación
 
-Toma un video MP4 de un dron, extrae los frames necesarios para un ortomosaico,
-analiza su calidad, corrige solo lo necesario y guarda las imágenes finales con
-sus metadatos dentro (EXIF).
+    python main.py --video "RUTA\DJI_0104.MP4" --salida "RUTA\salida-1" --json
 
-## Instalación
+Escribe en la salida estándar una línea JSON por evento:
 
-    python -m venv venv
-    venv\Scripts\Activate.ps1
-    pip install -r requirements.txt
+    {"tipo": "progreso", "porcentaje": 35, "etapa": "Extrayendo imágenes"}
+    {"tipo": "error", "mensaje": "No existe el video: ..."}
+    {"tipo": "fin", "porcentaje": 100, "resumen": {"imagenes_finales": 73, ...}}
 
-## Uso
-
-Copiar un video MP4 en `data/videos/` y ejecutar:
-
-    python main.py
-
-## Estructura
-
-- `main.py`: punto de entrada.
-- `src/`: módulos (video, recorrido, selección de frames, metadatos, calidad, mejora).
-- `data/`: videos y resultados (no se sube a Git).
-
-## Estado
-
-Sprints 1 a 6 completados. En desarrollo: interfaz y envío por API REST.
+- El log detallado sale por la salida de errores (stderr) y a `data/logs/`.
+- Código de salida: 0 si terminó bien, 1 si hubo un error.
+- Resultados: `<salida>/frames_originales/` e `<salida>/imagenes_procesadas/`.
+  Las imágenes finales llevan sus metadatos dentro (EXIF); no hay archivos aparte.

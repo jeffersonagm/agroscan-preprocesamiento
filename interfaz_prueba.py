@@ -38,7 +38,8 @@ def boton(padre, texto, comando, principal=True):
         )
     return tk.Button(
         padre, text=texto, command=comando, bg="white", fg=TEXTO,
-        relief="solid", borderwidth=1, font=("Segoe UI", 10), padx=14, pady=6, cursor="hand2",
+        relief="flat", highlightthickness=1, highlightbackground="#d1d5db",
+        font=("Segoe UI", 10), padx=14, pady=6, cursor="hand2",
     )
 
 class TarjetaProcesamiento:

@@ -72,27 +72,36 @@ def leer_frame(ruta_video, numero_frame):
         raise ValueError(f"No se pudo leer el frame {numero_frame}")
     return frame
 
-def extraer_frames_elegidos(ruta_video, carpeta_destino, imagenes):
+def extraer_frames_elegidos(ruta_video, carpeta_destino, imagenes, al_avanzar=None):
     for archivo in carpeta_destino.glob("*.jpg"):
         archivo.unlink()
-    ultimo = max(imagenes.keys())
 
+    ultimo = max(imagenes.keys())
     captura = cv2.VideoCapture(str(ruta_video))
     indice = 0
     guardados = 0
+    ultimo_porcentaje = -1
 
     while indice <= ultimo:
         hay_frame, frame = captura.read()
         if not hay_frame:
             break
 
+        if al_avanzar is not None and ultimo > 0:
+            porcentaje = int(100 * indice / ultimo)
+            if porcentaje != ultimo_porcentaje:
+                ultimo_porcentaje = porcentaje
+                al_avanzar(indice / ultimo)
+
         if indice in imagenes:
             datos = imagenes[indice]
             ruta_frame = carpeta_destino / datos["nombre"]
+
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             imagen = Image.fromarray(frame_rgb)
             imagen.save(ruta_frame, quality=config.CALIDAD_JPG, exif=datos["exif"])
             guardados += 1
         indice += 1
+
     captura.release()
     return guardados

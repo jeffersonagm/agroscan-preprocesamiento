@@ -34,7 +34,8 @@ def leer_argumentos():
 
 def avance_texto(porcentaje, mensaje):
     """Muestra el avance en texto legible."""
-    print(f"[{porcentaje:3d}%] {mensaje}", flush=True)
+    if porcentaje % 5 == 0:
+        print(f"[{porcentaje:3d}%] {mensaje}", flush=True)
 
 
 def avance_json(porcentaje, mensaje):

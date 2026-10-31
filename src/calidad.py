@@ -98,14 +98,14 @@ def diagnosticar_imagen(medidas, referencia):
 
     return {"ajustes": ajustes, "advertencias": advertencias}
 
-def analizar_imagenes(rutas):
+def analizar_imagenes(rutas, al_avanzar=None):
     medidas_por_imagen = []
-    for ruta in rutas:
+    for numero, ruta in enumerate(rutas, start=1):
         imagen = cv2.imread(str(ruta))
         medidas_por_imagen.append(medir_todo(imagen))
-
+        if al_avanzar is not None:
+            al_avanzar(numero / len(rutas))
     referencia = calcular_referencia(medidas_por_imagen)
-
     resultados = {}
     for ruta, medidas in zip(rutas, medidas_por_imagen):
         resultados[ruta.name] = {

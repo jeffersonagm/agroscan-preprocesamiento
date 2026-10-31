@@ -9,17 +9,35 @@ from src import seleccion
 from src import video
 from src.logger import configurar_logger
 
-def _avisar(al_avanzar, porcentaje, mensaje):
-    """Informa el avance, si alguien está escuchando."""
-    if al_avanzar is not None:
-        al_avanzar(porcentaje, mensaje)
+class Avance:
+
+    def __init__(self, al_avanzar):
+        self.al_avanzar = al_avanzar
+        self.ultimo_porcentaje = -1
+        self.ultimo_mensaje = ""
+
+    def avisar(self, porcentaje, mensaje):
+        if self.al_avanzar is None:
+            return
+        porcentaje = int(porcentaje)
+        if porcentaje == self.ultimo_porcentaje and mensaje == self.ultimo_mensaje:
+            return
+        self.ultimo_porcentaje = porcentaje
+        self.ultimo_mensaje = mensaje
+        self.al_avanzar(porcentaje, mensaje)
+
+    def de_etapa(self, inicio, fin, mensaje):
+        def avance_de_etapa(fraccion):
+            self.avisar(inicio + fraccion * (fin - inicio), mensaje)
+        return avance_de_etapa
 
 def procesar_video(ruta_video, carpeta_salida, al_avanzar=None):
     ruta_video = Path(ruta_video)
     carpeta_salida = Path(carpeta_salida)
     gestor_carpetas.crear_carpetas_de_trabajo()
     log = configurar_logger()
-    _avisar(al_avanzar, 0, "Preparando video")
+    avance = Avance(al_avanzar)
+    avance.avisar( 0, "Preparando video")
     if not ruta_video.exists():
         raise FileNotFoundError(f"No existe el video: {ruta_video}")
     carpeta_frames = carpeta_salida / config.SUBCARPETA_FRAMES
@@ -32,9 +50,13 @@ def procesar_video(ruta_video, carpeta_salida, al_avanzar=None):
     log.info(f"FPS: {info['fps']:.2f} | Resolución: {info['ancho']}x{info['alto']}")
     log.info(f"Duración: {info['duracion_segundos']:.1f} s | Frames totales: {info['total_frames']}")
 
-    _avisar(al_avanzar, config.PROGRESO_FIN_PREPARAR, "Analizando video")
+    avance.avisar( config.PROGRESO_FIN_PREPARAR, "Analizando video")
     log.info("Midiendo el movimiento del recorrido (puede tardar unos minutos)...")
-    pasos = recorrido.medir_recorrido(ruta_video, config.PASO_MEDICION_FRAMES)
+    pasos = recorrido.medir_recorrido(
+        ruta_video, 
+        config.PASO_MEDICION_FRAMES,
+        avance.de_etapa(config.PROGRESO_FIN_PREPARAR, config.PROGRESO_FIN_MEDIR, "Analizando video"),
+    )
 
     no_confiables = 0
     for paso in pasos:
@@ -62,7 +84,7 @@ def procesar_video(ruta_video, carpeta_salida, al_avanzar=None):
         "plan_b": False,
     }
 
-    _avisar(al_avanzar, config.PROGRESO_FIN_MEDIR, "Extrayendo imágenes")
+    avance.avisar( config.PROGRESO_FIN_MEDIR, "Extrayendo imágenes")
     log.info("Guardando frames...")
 
     if len(elegidos) == 0:
@@ -83,14 +105,19 @@ def procesar_video(ruta_video, carpeta_salida, al_avanzar=None):
                 "nombre": metadatos.crear_nombre_archivo(dato, ruta_video.stem),
                 "exif": metadatos.crear_exif(textos),
             }
-        total = video.extraer_frames_elegidos(ruta_video, carpeta_frames, imagenes)
+        total = video.extraer_frames_elegidos(
+            ruta_video, carpeta_frames, imagenes,
+            avance.de_etapa(config.PROGRESO_FIN_MEDIR, config.PROGRESO_FIN_GUARDAR, "Extrayendo imágenes"),
+            )
     resumen["imagenes_originales"] = total
     log.info(f"Frames guardados: {total} en {carpeta_frames}")
 
-    _avisar(al_avanzar, config.PROGRESO_FIN_GUARDAR, "Analizando calidad de las imágenes")
+    avance.avisar( config.PROGRESO_FIN_GUARDAR, "Analizando calidad de las imágenes")
     log.info("Analizando la calidad de las imágenes...")
     rutas_imagenes = sorted(carpeta_frames.glob("*.jpg"))
-    resultados, referencia = calidad.analizar_imagenes(rutas_imagenes)
+    resultados, referencia = calidad.analizar_imagenes(
+        rutas_imagenes,
+        avance.de_etapa(config.PROGRESO_FIN_GUARDAR, config.PROGRESO_FIN_CALIDAD, "Analizando calidad de las imágenes"))
     sin_ajustes = 0
     con_advertencias = 0
     for nombre, resultado in resultados.items():
@@ -112,7 +139,7 @@ def procesar_video(ruta_video, carpeta_salida, al_avanzar=None):
     if len(elegidos) == 0:
         log.warning("Sin datos del recorrido (plan B): no se generan las imágenes finales")
     else:
-        _avisar(al_avanzar, config.PROGRESO_FIN_CALIDAD, "Ajustando detalles visuales")
+        avance.avisar( config.PROGRESO_FIN_CALIDAD, "Ajustando detalles visuales")
         log.info("Generando las imágenes finales...")
         trabajos = {}
         for dato in elegidos:
@@ -124,7 +151,8 @@ def procesar_video(ruta_video, carpeta_salida, al_avanzar=None):
                 "diagnostico": resultados[nombre]["diagnostico"],
             }
         lista_resumen = finales.generar_imagenes_finales(
-            ruta_video, carpeta_finales, trabajos, referencia
+            ruta_video, carpeta_finales, trabajos, referencia,
+            avance.de_etapa(config.PROGRESO_FIN_CALIDAD, 100, "Ajustando detalles visuales"),
         )
         modificadas = 0
         con_pendientes = 0
@@ -141,6 +169,6 @@ def procesar_video(ruta_video, carpeta_salida, al_avanzar=None):
         log.info(f"Imágenes finales guardadas: {len(lista_resumen)} en {carpeta_finales}")
         log.info(f"Modificadas: {modificadas} | con problemas pendientes: {con_pendientes}")
 
-    _avisar(al_avanzar, 100, "Preprocesamiento completado")
+    avance.avisar( 100, "Preprocesamiento completado")
     log.info("Preprocesamiento completado.")
     return resumen

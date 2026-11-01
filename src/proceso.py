@@ -7,6 +7,7 @@ from src import metadatos
 from src import recorrido
 from src import seleccion
 from src import video
+from src import sincronizacion
 from src.logger import configurar_logger
 
 class Avance:
@@ -31,12 +32,21 @@ class Avance:
             self.avisar(inicio + fraccion * (fin - inicio), mensaje)
         return avance_de_etapa
 
-def procesar_video(ruta_video, carpeta_salida, al_avanzar=None):
+def identificar_mision(carpeta_salida):
+    carpeta_salida = Path(carpeta_salida)
+    if carpeta_salida.name.lower().startswith("salida-"):
+        return f"{carpeta_salida.parent.name}_{carpeta_salida.name}"
+    return carpeta_salida.name
+
+def procesar_video(ruta_video, carpeta_salida, al_avanzar=None, servidor=None, mision=None):
     ruta_video = Path(ruta_video)
     carpeta_salida = Path(carpeta_salida)
     gestor_carpetas.crear_carpetas_de_trabajo()
     log = configurar_logger()
     avance = Avance(al_avanzar)
+    if mision is None:
+        mision = identificar_mision(carpeta_salida)
+    fin_finales = config.PROGRESO_FIN_FINALES_CON_SYNC if servidor else 100
     avance.avisar( 0, "Preparando video")
     if not ruta_video.exists():
         raise FileNotFoundError(f"No existe el video: {ruta_video}")
@@ -82,6 +92,7 @@ def procesar_video(ruta_video, carpeta_salida, al_avanzar=None):
         "carpeta_frames": str(carpeta_frames),
         "carpeta_finales": str(carpeta_finales),
         "plan_b": False,
+        "sincronizacion": None,
     }
 
     avance.avisar( config.PROGRESO_FIN_MEDIR, "Extrayendo imágenes")
@@ -138,6 +149,8 @@ def procesar_video(ruta_video, carpeta_salida, al_avanzar=None):
 
     if len(elegidos) == 0:
         log.warning("Sin datos del recorrido (plan B): no se generan las imágenes finales")
+        if servidor:
+            log.warning("Plan B: no se sincroniza, porque no hay imágenes finales")
     else:
         avance.avisar( config.PROGRESO_FIN_CALIDAD, "Ajustando detalles visuales")
         log.info("Generando las imágenes finales...")
@@ -152,7 +165,7 @@ def procesar_video(ruta_video, carpeta_salida, al_avanzar=None):
             }
         lista_resumen = finales.generar_imagenes_finales(
             ruta_video, carpeta_finales, trabajos, referencia,
-            avance.de_etapa(config.PROGRESO_FIN_CALIDAD, 100, "Ajustando detalles visuales"),
+            avance.de_etapa(config.PROGRESO_FIN_CALIDAD, fin_finales, "Ajustando detalles visuales"),
         )
         modificadas = 0
         con_pendientes = 0
@@ -169,6 +182,38 @@ def procesar_video(ruta_video, carpeta_salida, al_avanzar=None):
         log.info(f"Imágenes finales guardadas: {len(lista_resumen)} en {carpeta_finales}")
         log.info(f"Modificadas: {modificadas} | con problemas pendientes: {con_pendientes}")
 
+        if servidor:
+            avance.avisar(fin_finales, "Sincronizando archivos")
+            log.info(f"Sincronizando con el servidor {servidor}...")
+            resultado_sync = sincronizacion.sincronizar(
+                carpeta_finales, servidor, mision,
+                carpeta_salida / config.ARCHIVO_ESTADO,
+                avance.de_etapa(fin_finales, 100, "Sincronizando archivos"),
+            )
+            resumen["sincronizacion"] = resultado_sync
+            log.info(f"Sincronización: {resultado_sync}")
+            if resultado_sync["sin_conexion"]:
+                log.warning("Sin conexión con el servidor: las imágenes quedan pendientes de envío")
+
     avance.avisar( 100, "Preprocesamiento completado")
     log.info("Preprocesamiento completado.")
     return resumen
+
+def sincronizar_salida(carpeta_salida, servidor, mision=None, al_avanzar=None):
+    carpeta_salida = Path(carpeta_salida)
+    carpeta_finales = carpeta_salida / config.SUBCARPETA_FINALES
+    if not carpeta_finales.exists():
+        raise FileNotFoundError(f"No hay imágenes finales en: {carpeta_finales}")
+
+    if mision is None:
+        mision = identificar_mision(carpeta_salida)
+
+    avance = Avance(al_avanzar)
+    avance.avisar( 0, "Sincronizando archivos")
+    resultado = sincronizacion.sincronizar(
+        carpeta_finales, servidor, mision,
+        carpeta_salida / config.ARCHIVO_ESTADO,
+        avance.de_etapa(0, 100, "Sincronizando archivos"),
+    )
+    avance.avisar( 100, "Sincronización completada")
+    return resultado

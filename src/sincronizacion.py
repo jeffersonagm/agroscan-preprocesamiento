@@ -82,46 +82,47 @@ def sincronizar(carpeta_finales, url, mision, ruta_estado, al_avanzar=None):
     guardar_estado(ruta_estado, estado)
 
     sin_conexion = False
-    if not servidor_disponible(url):
-        sin_conexion = True
-    else:
-        por_enviar = [n for n in sorted(imagenes) if imagenes[n]["estado"] != "enviada"]
-        for numero, nombre in enumerate(por_enviar, start=1):
-            registro = imagenes[nombre]
-            resultado = "red"
-            mensaje = ""
-            espera = config.SEGUNDOS_ENTRE_INTENTOS
+    por_enviar = [n for n in sorted(imagenes) if imagenes[n]["estado"] != "enviada"]
 
-            for intento in range(1, config.INTENTOS_POR_IMAGEN + 1):
-                registro["intentos"] += 1
-                resultado, mensaje = subir_imagen(
-                    url, carpeta_finales / nombre, mision, huellas[nombre]
-                )
+    if len(por_enviar) > 0:
+        if not servidor_disponible(url):
+            sin_conexion = True
+        else:
+            for numero, nombre in enumerate(por_enviar, start=1):
+                registro = imagenes[nombre]
+                resultado = "red"
+                mensaje = ""
+                espera = config.SEGUNDOS_ENTRE_INTENTOS
+
+                for intento in range(1, config.INTENTOS_POR_IMAGEN + 1):
+                    registro["intentos"] += 1
+                    resultado, mensaje = subir_imagen(
+                        url, carpeta_finales / nombre, mision, huellas[nombre]
+                    )
+                    if resultado == "ok":
+                        break
+                    if intento < config.INTENTOS_POR_IMAGEN:
+                        time.sleep(espera)
+                        espera = espera * 2
+
+                registro["fecha"] = datetime.now().isoformat(timespec="seconds")
                 if resultado == "ok":
-                    break
-                if intento < config.INTENTOS_POR_IMAGEN:
-                    time.sleep(espera)
-                    espera = espera * 2
+                    registro["estado"] = "enviada"
+                    registro["ultimo_error"] = ""
+                elif resultado == "rechazada":
+                    registro["estado"] = "error"
+                    registro["ultimo_error"] = mensaje
+                else:
+                    registro["estado"] = "pendiente"
+                    registro["ultimo_error"] = mensaje
+                    sin_conexion = True
 
-            registro["fecha"] = datetime.now().isoformat(timespec="seconds")
-            if resultado == "ok":
-                registro["estado"] = "enviada"
-                registro["ultimo_error"] = ""
-            elif resultado == "rechazada":
-                registro["estado"] = "error"
-                registro["ultimo_error"] = mensaje
-            else:
-                registro["estado"] = "pendiente"
-                registro["ultimo_error"] = mensaje
-                sin_conexion = True
+                guardar_estado(ruta_estado, estado)
+                if al_avanzar is not None:
+                    al_avanzar(numero / len(por_enviar))
 
-            guardar_estado(ruta_estado, estado)
-            if al_avanzar is not None:
-                al_avanzar(numero / len(por_enviar))
-
-            if resultado == "red":
-                break    # el servidor dejó de responder: no insistir con las demás
-
+                if resultado == "red":
+                    break   
     enviadas = 0
     pendientes = 0
     con_error = 0

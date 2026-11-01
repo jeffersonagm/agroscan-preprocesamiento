@@ -11,6 +11,8 @@ CARPETA = Path(__file__).resolve().parent / "data" / "servidor_prueba"
 CARPETA.mkdir(parents=True, exist_ok=True)
 RETRASO = float(os.environ.get("RETRASO", "0"))
 FALLAR_EN = os.environ.get("FALLAR_EN", "")
+CAER_TRAS = int(os.environ.get("CAER_TRAS", "0"))
+contador = {"recibidas": 0}
 
 @app.get("/api/salud")
 def salud():
@@ -31,6 +33,9 @@ def recibir_imagen():
     destino = CARPETA / mision
     destino.mkdir(parents=True, exist_ok=True)
     (destino / nombre).write_bytes(contenido)
+    contador["recibidas"] += 1
+    if CAER_TRAS > 0 and contador["recibidas"] >= CAER_TRAS:
+        os._exit(0)
     return jsonify({
         "recibido": True,
         "nombre": nombre,

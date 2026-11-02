@@ -59,11 +59,9 @@ class TarjetaProcesamiento:
         self.revisar_cola()
         ventana.protocol("WM_DELETE_WINDOW", self.cerrar)
 
-    # ---------- Construcción de la ventana ----------
-
     def construir_ventana(self):
         self.ventana.title("AgroScan - Procesamiento (prototipo)")
-        self.ventana.geometry("860x680")
+        self.ventana.geometry("860x580")
         self.ventana.configure(bg=FONDO)
 
         estilo = ttk.Style()
@@ -96,7 +94,6 @@ class TarjetaProcesamiento:
         descripcion.config(wraplength=770)
         descripcion.pack(fill="x", pady=(2, 12))
 
-        # Video elegido
         fila_video = tk.Frame(interior, bg="white")
         fila_video.pack(fill="x", pady=4)
         etiqueta(fila_video, "Video:", negrita=True).pack(side="left")
@@ -104,14 +101,12 @@ class TarjetaProcesamiento:
         self.texto_video.pack(side="left", padx=8)
         boton(fila_video, "Elegir video...", self.elegir_video, principal=False).pack(side="right")
 
-        # Carpeta de resultados
         fila_salida = tk.Frame(interior, bg="white")
         fila_salida.pack(fill="x", pady=4)
         etiqueta(fila_salida, "Resultados en:", negrita=True).pack(side="left")
         self.texto_salida = etiqueta(fila_salida, "-", color=GRIS)
         self.texto_salida.pack(side="left", padx=8)
 
-        # Servidor (opcional)
         fila_servidor = tk.Frame(interior, bg="white")
         fila_servidor.pack(fill="x", pady=4)
         self.enviar_al_servidor = tk.BooleanVar(value=False)
@@ -127,12 +122,10 @@ class TarjetaProcesamiento:
         self.entrada_servidor.insert(0, "http://127.0.0.1:5000")
         self.entrada_servidor.pack(side="left", padx=8)
 
-        # Botón de inicio
         self.boton_iniciar = boton(interior, "Iniciar preprocesamiento", self.iniciar)
         self.boton_iniciar.pack(anchor="w", pady=(14, 8))
         self.boton_iniciar.config(state="disabled")
 
-        # Barra de progreso
         self.texto_etapa = etiqueta(interior, "Listo para iniciar", negrita=True)
         self.texto_etapa.pack(fill="x", pady=(8, 4))
         self.barra = ttk.Progressbar(
@@ -143,11 +136,9 @@ class TarjetaProcesamiento:
         self.texto_porcentaje = etiqueta(interior, "0 %", color=GRIS)
         self.texto_porcentaje.pack(anchor="e", pady=(2, 0))
 
-        # Indicadores de resultado
         self.marco_resultado = tk.Frame(interior, bg="white")
         self.marco_resultado.pack(fill="x", pady=(10, 0))
 
-        # Botones que aparecen según el resultado
         self.marco_botones = tk.Frame(interior, bg="white")
         self.marco_botones.pack(fill="x", pady=(12, 0))
         self.boton_abrir = boton(
@@ -160,8 +151,6 @@ class TarjetaProcesamiento:
         self.texto_error = etiqueta(interior, "", color="#b91c1c")
         self.texto_error.config(wraplength=770)
         self.texto_error.pack(fill="x", pady=(8, 0))
-
-    # ---------- Acciones del usuario ----------
 
     def elegir_video(self):
         ruta = filedialog.askopenfilename(
@@ -228,13 +217,8 @@ class TarjetaProcesamiento:
 
     def ejecutar(self, comando):
         try:
-            self.proceso = subprocess.Popen(
-                comando,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,   # el log detallado se descarta aquí
-                text=True,
-                encoding="utf-8",
-                cwd=str(RAIZ),
+            self.proceso = subprocess.Popen(comando, stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL, text=True, encoding="utf-8", cwd=str(RAIZ),
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
             for linea in self.proceso.stdout:
@@ -246,8 +230,6 @@ class TarjetaProcesamiento:
             self.cola.put({"tipo": "termino", "codigo": self.proceso.returncode})
         except Exception as error:
             self.cola.put({"tipo": "error", "mensaje": str(error)})
-
-    # ---------- Revisión periódica de la cola (hilo principal) ----------
 
     def revisar_cola(self):
         while True:
@@ -324,7 +306,6 @@ class TarjetaProcesamiento:
                 self.agregar_indicador("Sin conexión con el servidor", True)
 
     def hay_pendientes_de_envio(self):
-        """Lee el archivo de estado que deja el módulo y dice si queda algo sin enviar."""
         if self.carpeta_salida is None:
             return False
         ruta = self.carpeta_salida / config.ARCHIVO_ESTADO
@@ -341,7 +322,6 @@ class TarjetaProcesamiento:
         return False
 
     def actualizar_botones(self):
-        """Habilita el inicio y muestra los botones que correspondan."""
         if self.ruta_video is not None:
             self.boton_iniciar.config(state="normal")
         self.boton_abrir.pack_forget()

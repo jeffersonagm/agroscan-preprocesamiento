@@ -7,11 +7,9 @@ import requests
 from src import config
 
 def calcular_huella(ruta):
-    """Calcula la huella SHA-256 de un archivo."""
     return hashlib.sha256(Path(ruta).read_bytes()).hexdigest()
 
 def servidor_disponible(url):
-    """Comprueba si el servidor responde."""
     try:
         respuesta = requests.get(f"{url}/api/salud", timeout=config.TIEMPO_ESPERA_SALUD)
         return respuesta.status_code == 200

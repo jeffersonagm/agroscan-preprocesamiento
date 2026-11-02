@@ -40,28 +40,6 @@ def calcular_salto_frames(fps, intervalo_segundos):
         salto = 1
     return salto
 
-def extraer_frames(ruta_video, carpeta_destino, intervalo_segundos):
-    info = obtener_info_video(ruta_video)
-    salto = calcular_salto_frames(info["fps"], intervalo_segundos)
-    captura = cv2.VideoCapture(str(ruta_video))
-    indice = 0
-    guardados = 0
-
-    while True:
-        hay_frame, frame = captura.read()
-        if not hay_frame:
-            break
-
-        if indice % salto == 0:
-            nombre = f"{ruta_video.stem}_frame_{indice:06d}.jpg"
-            ruta_frame = carpeta_destino / nombre
-            cv2.imwrite(str(ruta_frame), frame, [int(cv2.IMWRITE_JPEG_QUALITY), config.CALIDAD_JPG])
-            guardados += 1
-        indice += 1
-
-    captura.release()
-    return guardados
-
 def leer_frame(ruta_video, numero_frame):
     captura = cv2.VideoCapture(str(ruta_video))
     captura.set(cv2.CAP_PROP_POS_FRAMES, numero_frame)

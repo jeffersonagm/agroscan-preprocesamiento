@@ -293,7 +293,7 @@ class TarjetaProcesamiento:
             if resumen["con_pendientes"] > 0:
                 self.agregar_indicador(f"{resumen['con_pendientes']} con problemas pendientes", True)
             if resumen["plan_b"]:
-                self.agregar_indicador("Plan B: sin imágenes finales", True)
+                self.agregar_indicador("Plan B: frames por intervalo fijo", True)
 
         sincronizacion = resumen.get("sincronizacion")
         if sincronizacion:

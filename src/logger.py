@@ -13,7 +13,7 @@ def configurar_logger():
 
     formato = logging.Formatter(
         "%(asctime)s | %(levelname)s | %(message)s",
-        "%Y-%m-%d %H:%M:%S:",
+        "%Y-%m-%d %H:%M:%S",
     )
 
     destino_archivo = logging.FileHandler(ruta_log, encoding="utf-8")

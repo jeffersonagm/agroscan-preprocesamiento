@@ -1,4 +1,5 @@
 from src import config
+from src import video
 from src.recorrido import clasificar_paso
 
 def _agregar_frame(elegidos, frame, pasada, sentido, solape):
@@ -62,4 +63,16 @@ def seleccionar_frames(pasos):
         _agregar_frame(elegidos, frame_ultimo_paso, numero_pasada,
                        fase_actual, 100 - acumulado)
 
+    return elegidos
+
+def seleccionar_por_intervalo(total_frames, fps, intervalo_segundos):
+    salto = video.calcular_salto_frames(fps, intervalo_segundos)
+    elegidos = []
+    for frame in range(0, total_frames, salto):
+        elegidos.append({
+            "frame": frame,
+            "pasada": 1,
+            "sentido": "intervalo fijo",
+            "solape": None,
+        })
     return elegidos

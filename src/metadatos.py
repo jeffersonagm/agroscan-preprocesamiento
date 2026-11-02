@@ -31,7 +31,9 @@ def crear_textos(dato, nombre_video, fecha_inicio, fps):
     segundo = dato["frame"] / fps
     fecha_frame = fecha_inicio + timedelta(seconds=segundo)
 
-    if dato["solape"] is None:
+    if dato["sentido"] == "intervalo fijo":
+        texto_solape = "no medido (selección por intervalo fijo)"
+    elif dato["solape"] is None:
         texto_solape = "no aplica (primera imagen de la pasada)"
     else:
         texto_solape = f"{dato['solape']:.1f} %"

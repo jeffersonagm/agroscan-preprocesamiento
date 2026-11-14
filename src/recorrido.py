@@ -14,7 +14,7 @@ def medir_recorrido(ruta_video, paso_frames, al_avanzar=None):
     ultimo_porcentaje = -1
 
     while True:
-        hay_frame, frame = captura.read()
+        hay_frame = captura.grab()
         if not hay_frame:
             break
 
@@ -25,6 +25,9 @@ def medir_recorrido(ruta_video, paso_frames, al_avanzar=None):
                 al_avanzar(min(indice / total, 1.0))
 
         if indice % paso_frames == 0:
+            hay_imagen, frame = captura.retrieve()
+            if not hay_imagen:
+                raise RuntimeError(f"No se pudo leer el frame {indice} del video")
             frame_reducido = reducir(frame)
 
             if frame_previo is not None:
@@ -41,7 +44,6 @@ def medir_recorrido(ruta_video, paso_frames, al_avanzar=None):
                 pasos.append(paso)
             frame_previo = frame_reducido
         indice += 1
-
     captura.release()
     return pasos
 

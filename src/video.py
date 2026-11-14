@@ -53,7 +53,6 @@ def leer_frame(ruta_video, numero_frame):
 def extraer_frames_elegidos(ruta_video, carpeta_destino, imagenes, al_avanzar=None):
     for archivo in carpeta_destino.glob("*.jpg"):
         archivo.unlink()
-
     ultimo = max(imagenes.keys())
     captura = cv2.VideoCapture(str(ruta_video))
     indice = 0
@@ -61,7 +60,7 @@ def extraer_frames_elegidos(ruta_video, carpeta_destino, imagenes, al_avanzar=No
     ultimo_porcentaje = -1
 
     while indice <= ultimo:
-        hay_frame, frame = captura.read()
+        hay_frame = captura.grab()
         if not hay_frame:
             break
 
@@ -72,13 +71,16 @@ def extraer_frames_elegidos(ruta_video, carpeta_destino, imagenes, al_avanzar=No
                 al_avanzar(indice / ultimo)
 
         if indice in imagenes:
+            hay_imagen, frame = captura.retrieve()
+            if not hay_imagen:
+                break
             datos = imagenes[indice]
             ruta_frame = carpeta_destino / datos["nombre"]
-
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             imagen = Image.fromarray(frame_rgb)
             imagen.save(ruta_frame, quality=config.CALIDAD_JPG, exif=datos["exif"])
             guardados += 1
+
         indice += 1
 
     captura.release()
